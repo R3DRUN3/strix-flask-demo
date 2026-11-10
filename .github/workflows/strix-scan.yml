@@ -1,0 +1,48 @@
+
+name: Strix Security Scan
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  strix-scan:
+    name: AI Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install Strix
+        run: |
+          curl -sSL https://strix.ai/install | bash
+
+      - name: Verify Strix installation
+        run: |
+          strix --help
+
+      - name: Run Strix security scan
+        env:
+          STRIX_LLM: openai/${{ secrets.AZURE_FOUNDRY_DEPLOYMENT }}
+          LLM_API_KEY: ${{ secrets.AZURE_FOUNDRY_API_KEY }}
+          LLM_API_BASE: ${{ secrets.AZURE_FOUNDRY_ENDPOINT }}
+        run: |
+          strix -n --target ./ --scan-mode quick
+
+      - name: Upload Strix reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: strix-security-report
+          path: strix_runs/
+          if-no-files-found: ignore
+          retention-days: 14
