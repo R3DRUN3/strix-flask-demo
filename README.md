@@ -1,4 +1,4 @@
 # strix-flask-demo  
 
 
-strix CI integration
+Strix CI integration Demo.  
