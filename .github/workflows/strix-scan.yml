@@ -17,41 +17,50 @@ jobs:
     timeout-minutes: 45
 
     steps:
-      # 1. Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
-      # 2. Install Strix CLI
       - name: Install Strix
         run: |
           curl -sSL https://strix.ai/install | bash
 
-      # 3. Verify Strix installation
       - name: Verify Strix installation
         run: |
           strix --help
 
-      # 4. Pre-pull Strix sandbox image
-      - name: Pre-pull Strix sandbox image
+      # Discover the sandbox image already pulled by Strix
+      - name: Detect Strix sandbox image
+        id: sandbox
+        shell: bash
         run: |
-          docker pull ghcr.io/usestrix/strix-sandbox:1.4.0
+          IMAGE=$(docker images \
+            --format '{{.Repository}}:{{.Tag}}' \
+            | grep '^ghcr.io/usestrix/strix-sandbox:' \
+            | head -n 1)
 
-      # 5. Run Strix security scan
+          if [ -z "$IMAGE" ]; then
+            echo "ERROR: Strix sandbox image not found!"
+            docker images
+            exit 1
+          fi
+
+          echo "Detected Strix sandbox image: $IMAGE"
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
+
       - name: Run Strix security scan
         env:
-          STRIX_IMAGE: ghcr.io/usestrix/strix-sandbox:1.4.0
+          STRIX_IMAGE: ${{ steps.sandbox.outputs.image }}
 
-          # Azure AI Foundry configuration
           STRIX_LLM: openai/${{ secrets.AZURE_FOUNDRY_DEPLOYMENT }}
           LLM_API_KEY: ${{ secrets.AZURE_FOUNDRY_API_KEY }}
           LLM_API_BASE: ${{ secrets.AZURE_FOUNDRY_ENDPOINT }}
 
         run: |
+          echo "Using sandbox image: $STRIX_IMAGE"
           strix -n --target ./ --scan-mode quick
 
-      # 6. Upload scan reports
       - name: Upload Strix reports
         if: always()
         uses: actions/upload-artifact@v4
