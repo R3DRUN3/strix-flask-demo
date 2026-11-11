@@ -46,8 +46,6 @@ def index():
 @app.route("/user")
 def get_user():
     username = request.args.get("username", "")
-
-    # VULNERABILITY: SQL Injection
     conn = sqlite3.connect(DATABASE)
     query = f"SELECT * FROM users WHERE username = '{username}'"
     result = conn.execute(query).fetchall()
@@ -59,8 +57,6 @@ def get_user():
 @app.route("/hello")
 def hello():
     name = request.args.get("name", "world")
-
-    # VULNERABILITY: Reflected Cross-Site Scripting (XSS)
     return render_template_string(
         f"<h1>Hello {name}!</h1>"
     )
@@ -69,8 +65,6 @@ def hello():
 @app.route("/ping")
 def ping():
     host = request.args.get("host", "127.0.0.1")
-
-    # VULNERABILITY: OS Command Injection
     result = subprocess.getoutput(f"ping -c 1 {host}")
 
     return f"<pre>{result}</pre>"
@@ -78,7 +72,6 @@ def ping():
 
 @app.route("/files/<path:filename>")
 def download_file(filename):
-    # VULNERABILITY: Path Traversal
     filepath = os.path.join(FILES_DIRECTORY, filename)
 
     with open(filepath, "r") as file:
@@ -88,7 +81,6 @@ def download_file(filename):
 if __name__ == "__main__":
     init_db()
 
-    # VULNERABILITY: Debug mode enabled
     app.run(
         host="127.0.0.1",
         port=5000,
